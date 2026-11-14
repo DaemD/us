@@ -438,3 +438,11 @@ html.locked body {
 .choice-hint.show {
     opacity: 0.62;
 }
+
+/* the one touch of colour: blushing */
+.blush {
+    fill: none;
+    stroke: #d2504a;
+    stroke-width: 1.3;
+    stroke-linecap: round;
+}

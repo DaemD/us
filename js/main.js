@@ -1863,6 +1863,8 @@ const erase = el('rect', { class: 'paper', x: EA, y: -6, width: 0, height: 12 },
 const lonelyBench = group(OUT.back, `<path class="prop" d="M${EA - 326} -13 H${EA - 280} M${EA - 322} -13 V0 M${EA - 284} -13 V0"/>`);
 const lonelyDesk = group(OUT.back, D.table(EA + 330, 36) + D.chair(EA + 296, 1) + D.laptop(EA + 316, -26, 1));
 const myPhone = group(OUT.front, D.phone());
+// a little blush on my cheek
+const blush = group(OUT.front, `<path class="blush" d="M-1.6 -1.4 l-2 2.4 M0.6 -1.4 l-2 2.4 M2.8 -1.4 l-2 2.4"/>`);
 // little laugh lines by each head
 const laughLines = [0, 1].map(() => group(OUT.front, `<path class="prop" d="M7 -5 l5 -3 M8 0 h6 M7 5 l5 3"/>`));
 
@@ -1927,24 +1929,33 @@ const outcomeState = (kind, o) => {
     return { st, cam };
   }
 
-  // held on: our hands meet and the thread knots; the rain clears and the sun comes up,
-  // we step in close, face each other, and laugh
-  const close = smooth(0.2, 0.32, o);
-  const mx = lerp(MY_SPOT, BENCH - 13, close);
-  const hx = lerp(HER_MEET, BENCH + 13, close);
-  const laugh = smooth(0.38, 0.44, o) * (1 - smooth(0.9, 0.98, o));
+  // held on: our hands meet and the thread knots. We let go and stand a little apart
+  // while the rain clears; I look at my shoes, blushing, and shuffle closer in small
+  // nervous steps; then I look up, she closes the last bit, and we laugh
+  const apart = smooth(0.1, 0.2, o);
+  const steps = [[0.3, 0.37], [0.4, 0.47], [0.5, 0.57]];
+  const stepK = steps.reduce((n, [a, b]) => n + smooth(a, b, o), 0) / steps.length;
+  const stepping = steps.some(([a, b]) => o > a && o < b);
+  const herIn = smooth(0.62, 0.7, o);
+  const mx = lerp(lerp(MY_SPOT, BENCH - 34, apart), BENCH - 13, stepK);
+  const hx = lerp(lerp(HER_MEET, BENCH + 30, apart), BENCH + 13, herIn);
+  const shy = smooth(0.22, 0.3, o) * (1 - smooth(0.6, 0.66, o));
+  const laugh = smooth(0.68, 0.74, o) * (1 - smooth(0.93, 0.99, o));
   const bob = (off) => Math.abs(Math.sin(o * 95 + off)) * 2.2 * laugh;
 
-  let meP = mix(withArm(STAND, 1, 80, 0), STAND, smooth(0.12, 0.2, o));
-  // me: head thrown back a little, arm across my stomach
+  let meP = mix(withArm(STAND, 1, 80, 0), STAND, smooth(0.1, 0.18, o));
+  // shy: hands together in front, small shuffling steps
+  meP = mix(meP, withArm(withArm(STAND, 0, 25, 60), 1, 30, 55), shy);
+  if (stepping) meP = mix(meP, walk(mx * STR * 2.2), 0.45);
   meP = mix(meP, withArm(withArm(withLean(STAND, -8), 1, 35, 95), 0, 20, 70), laugh);
-  // her: hand over her mouth, leaning in
-  let herP = mix(withArm(STAND, 1, 76, 0), STAND, smooth(0.12, 0.2, o));
-  herP = mix(herP, withArm(withLean(STAND, 6), 1, ...[22, 150]), laugh);
+  let herP = mix(withArm(STAND, 1, 76, 0), STAND, smooth(0.1, 0.18, o));
+  if (herIn > 0 && herIn < 1) herP = mix(herP, walk(hx * STR * 2.2 + 1.4), 0.45);
+  herP = mix(herP, withArm(withLean(STAND, 6), 1, 22, 150), laugh);
 
   st.laugh = laugh * (0.6 + 0.4 * Math.abs(Math.sin(o * 60)));
-  st.me = at(mx, 1, meP, { nod: -10 * laugh, lift: bob(0) });
-  st.her = at(hx, -1, herP, { nod: 8 * laugh, lift: bob(1.3) });
+  st.blush = smooth(0.24, 0.3, o) * (1 - smooth(0.78, 0.88, o));
+  st.me = at(mx, 1, meP, { nod: 34 * shy - 10 * laugh, lift: bob(0) });
+  st.her = at(hx, -1, herP, { nod: 6 * (1 - laugh) + 8 * laugh, lift: bob(1.3) });
   st.strands = o < 0.2 ? { intact: 5, tied: 1 + Math.sin(o * 80) * 0.2 } : null;
   st.noThread = smooth(0.18, 0.28, o);
   st.sun = smooth(0.08, 0.4, o);
@@ -1976,6 +1987,7 @@ const renderOutcome = (kind, o) => {
 
   if (kind === 'letgo') {
     laughLines.forEach((n) => op(n, 0));
+    op(blush, 0);
     op(sunrise, 0);
     op(bench, 0);
     op(lonelyBench, st.props.bench);
@@ -1992,6 +2004,10 @@ const renderOutcome = (kind, o) => {
     op(lonelyBench, 0);
     op(lonelyDesk, 0);
     op(myPhone, 0);
+    if (meOut && st.blush > 0.01) {
+      put(blush, meOut.head.x + meOut.dir * 2.6, meOut.head.y + 2.4);
+      op(blush, st.blush);
+    } else op(blush, 0);
     [meOut, herOut].forEach((f, i) => {
       if (!f) return op(laughLines[i], 0);
       // on the outside of each of us, away from the other
@@ -2028,7 +2044,7 @@ const decide = (kind) => {
   const anim = { o: 0 };
   gsap.to(anim, {
     o: 1,
-    duration: kind === 'held' ? 14 : 12,
+    duration: kind === 'held' ? 17 : 12,
     ease: 'none',
     onUpdate: () => renderOutcome(kind, anim.o),
     onComplete: () => setTimeout(() => showLetter(kind === 'held' ? 'together' : 'goodbye'), kind === 'held' ? 1800 : 600),
@@ -2121,4 +2137,5 @@ render(0);
     track(prior === 'held' ? '/returned-held' : '/returned-let-go');
   }
 }
+
 
