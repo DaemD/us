@@ -446,3 +446,40 @@ html.locked body {
     stroke-width: 1.3;
     stroke-linecap: round;
 }
+
+/* a gentle note on the first screen */
+.start-hint {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 9vh;
+    margin: 0;
+    text-align: center;
+    font-family: Georgia, "Times New Roman", serif;
+    font-style: italic;
+    font-size: clamp(0.95rem, 2.2vw, 1.1rem);
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    opacity: 0.62;
+    pointer-events: none;
+}
+
+/* the words alone carry the opening, like the line at the end */
+.scroll-hint {
+    display: none;
+}
+
+/* speech bubbles on the calls */
+.bubble {
+    fill: var(--bg);
+    stroke: var(--ink);
+    stroke-width: 0.9;
+    stroke-opacity: 0.7;
+}
+
+.bubble-text {
+    font-family: Georgia, "Times New Roman", serif;
+    font-style: italic;
+    font-size: 8.4px;
+    fill: var(--ink);
+}

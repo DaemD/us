@@ -322,6 +322,44 @@ const D = {
   },
 };
 
+// a small speech bubble: a rounded box with a tail pointing down at whoever is speaking
+const makeBubble = (parent) => {
+  const g = el('g', { opacity: 0 }, parent);
+  const box = el('path', { class: 'bubble' }, g);
+  const text = el('text', { class: 'bubble-text', 'text-anchor': 'middle' }, g);
+  return { g, box, text, last: '' };
+};
+const setBubble = (b, x, y, str, show) => {
+  if (!show || show < 0.02 || !str) return op(b.g, 0);
+  if (b.last !== str) {
+    b.text.textContent = str;
+    b.last = str;
+  }
+  const w = str.length * 4.6 + 14;
+  const h = 15;
+  const l = -w / 2;
+  const top = -h - 5;
+  b.box.setAttribute('d', `M${l + 4} ${top} H${-l - 4} Q${-l} ${top} ${-l} ${top + 4} V${top + h - 4} Q${-l} ${top + h} ${-l - 4} ${top + h} H4 L0 0 L-4 ${top + h} H${l + 4} Q${l} ${top + h} ${l} ${top + h - 4} V${top + 4} Q${l} ${top} ${l + 4} ${top} Z`);
+  b.text.setAttribute('x', 0);
+  b.text.setAttribute('y', f1(top + h / 2 + 3));
+  put(b.g, x, y);
+  op(b.g, show);
+};
+// who is talking, and what they say, as a call goes on: alternates between us
+const callTalk = (t, a, b, lines) => {
+  if (t < a || t > b) return null;
+  const k = (t - a) / (b - a);
+  const n = lines.length;
+  const i = Math.min(n - 1, Math.floor(k * n));
+  const local = k * n - i;
+  return { line: lines[i], who: i % 2, show: smooth(0.05, 0.2, local) * (1 - smooth(0.8, 0.95, local)) };
+};
+const showCallBubble = (b, c, talk, lift = 26) => {
+  if (!talk || !c.active || !c.me || !c.her) return op(b.g, 0);
+  const f = talk.who === 0 ? c.me : c.her;
+  setBubble(b, f.head.x, f.head.y - lift, talk.line, talk.show);
+};
+
 // a path that draws itself (it needs pathLength="1")
 const draw = (n, k) => n.setAttribute('stroke-dashoffset', o3(1 - k));
 
@@ -461,6 +499,7 @@ scene({
 
 // 3. online meetings: four of us on a call
 scene({
+  slow: [[0.08, 0.92, 2.6]], // slow enough to read what we're saying
   len: 800,
   w: 1.3,
   view: { w: 820, h: 340, dy: -110 },
@@ -481,15 +520,29 @@ scene({
         ${hair ? `<path class="prop" d="M${A + x + 41} ${y + 13} q6 3 4 12"/>` : ''}`);
       return tg.querySelector('rect');
     });
-    return { tiles };
+    const tileAt = [[-40, -232], [40, -232], [-40, -184], [40, -184]];
+    const bubble = makeBubble(g.front);
+    return { tiles, tileAt, bubble, A };
   },
   act(t, A) {
     const talk = (o) => seated(t, withArm(SIT, 1, lerp(50, 80, cyc(t, 5, o)), 50));
     return { me: at(A - 288, 1, talk(0)), her: at(A + 288, -1, talk(2)) };
   },
-  update(t, r) {
+  update(t, r, c) {
     const who = Math.floor(t * 9) % 4;
     r.tiles.forEach((tile, i) => tile.classList.toggle('speaking', i === who && t > 0.08 && t < 0.92));
+    // whoever is speaking says something
+    const LINES = [
+      ["I'll push the code tonight", 'can you send me the link?', 'okay, I can do that part'],
+      ['we need to build this by Friday', 'who is doing the slides?', 'same time tomorrow?'],
+      ["let's divide the work", 'did anyone test it?', 'I have to go in ten'],
+      ["let's prepare for the hackathon", 'I can do the design', "that's actually a good idea"],
+    ];
+    const round = Math.floor(Math.floor(t * 9) / 4);
+    const local = (t * 9) % 1;
+    const line = LINES[who][round % LINES[who].length];
+    const [tx, ty] = r.tileAt[who];
+    setBubble(r.bubble, r.A + tx, ty - 6, line, t > 0.08 && t < 0.92 ? smooth(0.05, 0.2, local) * (1 - smooth(0.82, 0.97, local)) : 0);
   },
 });
 
@@ -529,6 +582,7 @@ scene({
 
 // 5. late calls, just the two of us — me lying on my bed with the laptop
 scene({
+  slow: [[0.08, 0.92, 2.6]], // slow enough to read what we're saying
   len: 740,
   w: 1.4,
   view: { w: 760, h: 340, dy: -110 },
@@ -546,7 +600,8 @@ scene({
     group(g.back, s);
     const hour = el('line', { class: 'prop', x1: A, y1: -245, x2: A, y2: -253 }, g.back);
     const min = el('line', { class: 'prop', x1: A, y1: -245, x2: A, y2: -257 }, g.back);
-    return { hour, min, A };
+    const bubble = makeBubble(g.front);
+    return { hour, min, A, bubble };
   },
   act(t, A) {
     const me = lying(t)
@@ -557,7 +612,12 @@ scene({
       her: at(A + 250, -1, seated(t, withArm(type(cyc(t, 6)), 1, lerp(60, 110, cyc(t, 3)), 60))),
     };
   },
-  update(t, r) {
+  update(t, r, c) {
+    showCallBubble(r.bubble, c, callTalk(t, 0.16, 0.86, [
+      'how was your day?', 'long. how was yours?',
+      'what did you do today?', 'nothing much, tell me yours',
+      'are you sleepy?', 'no, keep talking',
+    ]), 24);
     r.min.setAttribute('transform', `rotate(${f1(t * 360 * 5)} ${r.A} -245)`);
     r.hour.setAttribute('transform', `rotate(${f1(t * 200)} ${r.A} -245)`);
   },
@@ -635,6 +695,7 @@ scene({
 
 // 7. calls on the phone at night, until the morning
 scene({
+  slow: [[0.08, 0.92, 2.6]], // slow enough to read what we're saying
   len: 680,
   w: 1.4,
   view: { w: 700, h: 330, dy: -100 },
@@ -645,7 +706,8 @@ scene({
     const sun = group(g.sky, D.sun(18));
     const link = el('path', { class: 'wave' }, g.back);
     const phones = [group(g.front, D.phone()), group(g.front, D.phone())];
-    return { stars, moon, sun, link, phones, A };
+    const bubble = makeBubble(g.front);
+    return { stars, moon, sun, link, phones, A, bubble };
   },
   act(t, A) {
     const f = blink(t);
@@ -664,6 +726,12 @@ scene({
     put(r.sun, A, lerp(-20, -220, smooth(0.6, 0.95, t)));
     op(r.sun, smooth(0.58, 0.66, t));
     phoneLink(r, c, c.active && t > 0.12 && t < 0.88, t);
+    showCallBubble(r.bubble, c, callTalk(t, 0.14, 0.86, [
+      'are you still awake?', 'yeah, I can\'t sleep',
+      'what did you eat today?', 'guess',
+      'it\'s 4am already', 'five more minutes',
+      'the sun is coming up', 'okay, goodnight. or morning',
+    ]), 22);
   },
 });
 
@@ -860,6 +928,7 @@ scene({
 
 // 11. every night on the phone again: night, morning, night, morning…
 scene({
+  slow: [[0.08, 0.92, 2.6]], // slow enough to read what we're saying
   len: 660,
   w: 1.3,
   view: { w: 640, h: 360, dy: -120 },
@@ -870,7 +939,8 @@ scene({
     const moon = group(g.sky, D.moon(0, 0, 13));
     const link = el('path', { class: 'wave' }, g.back);
     const phones = [group(g.front, D.phone()), group(g.front, D.phone())];
-    return { sun, moon, link, phones, A };
+    const bubble = makeBubble(g.front);
+    return { sun, moon, link, phones, A, bubble };
   },
   act(t, A) {
     const f = blink(t);
@@ -886,6 +956,11 @@ scene({
     put(r.moon, r.A + Math.cos(a) * 120, -120 - Math.sin(a) * 120);
     put(r.sun, r.A - Math.cos(a) * 120, -120 + Math.sin(a) * 120);
     phoneLink(r, c, c.active && t > 0.12 && t < 0.88, t);
+    showCallBubble(r.bubble, c, callTalk(t, 0.14, 0.86, [
+      'how was your day?', 'tiring. yours?',
+      'what are you doing tomorrow?', 'nothing yet, why?',
+      'did you eat?', 'yes, did you?',
+    ]), 22);
   },
 });
 
@@ -1663,6 +1738,7 @@ const resize = () => {
 };
 resize();
 const scrollHint = document.querySelector('.scroll-hint');
+const startHint = document.querySelector('.start-hint');
 
 // the thread between us: faint and dotted at first, solid when we're close,
 // thin when we fight — and in the end it snaps and the two ends fall away
@@ -1750,6 +1826,7 @@ const drawScene = (S, p) => {
   });
 
   scrollHint.style.opacity = o3(1 - smooth(0.001, 0.008, p));
+  startHint.style.opacity = o3(0.62 * (1 - smooth(0.001, 0.008, p)));
   return { me, her };
 };
 
@@ -1786,7 +1863,9 @@ const STRANDS = Array.from({ length: 5 }, () => ({
   knot: el('circle', { class: 'fill', r: 1.7 }, L.figs),
 }));
 STRANDS.forEach((s) => [s.full, s.a, s.b, s.knot].forEach((n) => L.figs.insertBefore(n, ME.g)));
-const beckon = el('circle', { class: 'beckon', r: 9 }, L.front);
+// wrapped in a group: the pulse animation sets its own opacity, so the group does the hiding
+const beckon = el('g', { opacity: 0 }, L.front);
+el('circle', { class: 'beckon', r: 9 }, beckon);
 const hint = document.querySelector('.choice-hint');
 
 const hideStrands = () => STRANDS.forEach((s) => [s.full, s.a, s.b, s.knot].forEach((n) => op(n, 0)));
@@ -2130,6 +2209,7 @@ render(0);
     CH.decided = prior;
     lockScroll();
     document.querySelector('.scroll-hint').style.opacity = 0;
+    document.querySelector('.start-hint').style.opacity = 0;
     hint.classList.remove('show');
     renderOutcome(prior, 1);
     if (prior === 'letgo') document.querySelector('.fade-white').style.opacity = 1;
@@ -2137,5 +2217,6 @@ render(0);
     track(prior === 'held' ? '/returned-held' : '/returned-let-go');
   }
 }
+
 
 
