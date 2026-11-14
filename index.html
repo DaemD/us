@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Us</title>
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        // ?me   → this device is mine: never count its visits
+        // ?reset → forget the ending chosen on this device (for testing)
+        (function () {
+            var q = location.search;
+            try {
+                if (/[?&]me\b/.test(q)) localStorage.setItem('us_me', '1');
+                if (/[?&]reset\b/.test(q)) localStorage.removeItem('us_choice');
+            } catch (e) {}
+            if (/[?&](me|reset)\b/.test(q)) history.replaceState(null, '', location.pathname);
+            window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+            var mine = false;
+            try { mine = localStorage.getItem('us_me') === '1'; } catch (e) {}
+            if (!mine) {
+                var s = document.createElement('script');
+                s.defer = true;
+                s.src = '/_vercel/insights/script.js';
+                document.head.appendChild(s);
+            }
+        })();
+    </script>
+</head>
+
+<body>
+    <svg class="stage" aria-hidden="true"></svg>
+    <span class="scroll-hint" aria-hidden="true"></span>
+    <div class="scroll-space"></div>
+    <p class="choice-hint">keep tapping to stay &nbsp;&middot;&nbsp; scroll on to let it be</p>
+    <div class="fade-white" aria-hidden="true"></div>
+
+    <div class="letter-overlay">
+        <article class="letter" data-letter="goodbye">
+            <p>Shumail,</p>
+            <p>If you're reading this, you let go. And that's okay. I mean that.</p>
+            <p>I made this because I couldn't stop thinking about you. Every little scene on that line is something I've been carrying around with me: the internship, the chips, the calls that went on until morning, the snow, the juice I spilled all over myself. I wanted to put them somewhere, and I wanted you to see them once.</p>
+            <p>I'm not going to ask why, or try to change your mind. You've always known what's right for you, and I'd never want to hold on to you in a way that makes you feel like you can't leave.</p>
+            <p>So I just want the last thing you see here to be honest. I loved you. I always did. Not in a way that asks for anything back, just in a way that was true. The time I had with you was the best time I've had, and I wouldn't trade any of it.</p>
+            <p>I hope life is gentle with you. I hope you find everything you're looking for, and that you're surrounded by people who make you laugh the way you used to make me laugh.</p>
+            <p>I'll always remember you.</p>
+            <p class="sign-off">Daem</p>
+        </article>
+
+        <article class="letter" data-letter="together">
+            <p>Shumail,</p>
+            <p>You held on.</p>
+            <p>I honestly don't know what to say. I'm probably sitting here looking at my shoes, the way I always did around you.</p>
+            <p>I made this because I couldn't stop thinking about you. Every scene on that line is something I've held on to, and somewhere along the way I realised I didn't want our story to just stop where it did.</p>
+            <p>We don't have to fix everything at once. No big promises, no pressure. Just slowly, one small step at a time, the way it started. Even a hi is more than enough.</p>
+            <p>I'm really glad you're here.</p>
+            <p class="sign-off">Daem</p>
+        </article>
+    </div>
+
+    <script src="js/gsap.min.js"></script>
+    <script src="js/ScrollTrigger.min.js"></script>
+    <script src="js/lenis.min.js"></script>
+    <script src="js/main.js"></script>
+</body>
+
+</html>
